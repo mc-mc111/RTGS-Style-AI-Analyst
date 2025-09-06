@@ -35,7 +35,7 @@ def generate_insight_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     generation_config = {"temperature": 0.0, "response_mime_type": "application/json"}
-    model = genai.GenerativeModel("gemini-1.5-flash-latest", generation_config=generation_config)
+    model = genai.GenerativeModel("gemini-2.0-flash", generation_config=generation_config)
     
     try:
         response = model.generate_content(prompt)
