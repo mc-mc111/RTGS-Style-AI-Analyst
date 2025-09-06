@@ -1,4 +1,6 @@
 import pandas as pd
+import re
+import string
 from typing import Dict, Any
 from state import GraphState
 
@@ -26,6 +28,23 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
             elif action == "remove_column" and column:
                 df_cleaned.drop(columns=[column], inplace=True)
             
+            elif action == "clean_text" and column:
+                # Ensure column is string type and handle missing values
+                temp_col = df_cleaned[column].astype(str).fillna('')
+                operations = details.get("operations", [])
+                
+                if "lowercase" in operations:
+                    temp_col = temp_col.str.lower()
+                if "remove_punctuation" in operations:
+                    # Remove all standard punctuation
+                    temp_col = temp_col.str.replace(f'[{re.escape(string.punctuation)}]', '', regex=True)
+                if "remove_digits" in operations:
+                    temp_col = temp_col.str.replace(r'\d+', '', regex=True)
+                if "remove_non_ascii" in operations:
+                    temp_col = temp_col.str.encode('ascii', 'ignore').str.decode('ascii')
+                
+                df_cleaned[column] = temp_col
+
             elif action == "convert_type" and column:
                 new_type = details.get("new_type")
                 pre_processing_steps = details.get("pre_processing", [])

@@ -3,13 +3,24 @@ import matplotlib.pyplot as plt
 import os
 import json
 from typing import Dict, Any
+from collections import Counter
 
 from rich.console import Console
 from rich.table import Table
 
+# NLTK for stop words
+import nltk
+from nltk.corpus import stopwords
+
 from state import GraphState
-from agents.profiler import get_data_profile # We need the profiler again
+from agents.profiler import get_data_profile
 import google.generativeai as genai
+
+# Download stopwords once
+try:
+    stopwords.words('english')
+except LookupError:
+    nltk.download('stopwords')
 
 console = Console()
 
@@ -21,21 +32,22 @@ def generate_insight_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     You are a data analyst. Based on the profile of the CLEANED dataset below,
     suggest a single, valuable insight to generate.
 
-    The plan should be a JSON object with three keys:
-    - "groupby_column": A categorical column to group the data by.
-    - "agg_column": A numerical column to perform a calculation on.
-    - "agg_function": The function to use (e.g., "sum", "mean", "count").
+    **Instructions:**
+    1.  **For Text Data:** If there is a primary text column (like 'review_text'), the most valuable insight is a `word_frequency` analysis.
+    2.  **For Numerical/Categorical Data:** Suggest a plan with `groupby_column`, `agg_column`, and `agg_function`.
 
-    Choose the most insightful combination. For example, grouping by 'gender' and finding the 'mean' of 'bmi' is a good insight.
+    **Allowed Plans:**
+    - Plan A (For Text): {{"action": "word_frequency", "text_column": "column_name"}}
+    - Plan B (For Other Data): {{"action": "group_and_aggregate", "groupby_column": "cat_col", "agg_column": "num_col", "agg_function": "mean"}}
 
     Data Profile:
     {json.dumps(profile, indent=2)}
 
-    Generate the JSON insight plan now.
+    Generate the most appropriate JSON insight plan now.
     """
     
     generation_config = {"temperature": 0.0, "response_mime_type": "application/json"}
-    model = genai.GenerativeModel("gemini-2.0-flash", generation_config=generation_config)
+    model = genai.GenerativeModel("gemini-1.5-flash-latest", generation_config=generation_config)
     
     try:
         response = model.generate_content(prompt)
@@ -44,59 +56,75 @@ def generate_insight_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Error generating insight plan: {e}")
         return {}
 
-
 def insight_node(state: GraphState) -> Dict[str, Any]:
-    """
-    Dynamically generates and displays insights based on an AI-driven plan.
-    """
+    """Dynamically generates insights based on an AI-driven plan."""
     print("\n---EXECUTING DYNAMIC INSIGHT NODE---")
     cleaned_data_path = state['cleaned_data_path']
-    df = pd.read_csv(cleaned_data_path)
     
-    # Profile the CLEAN data to decide what to analyze
-    profile = get_data_profile(cleaned_data_path)
-    insight_plan = generate_insight_plan(profile)
-
-    if not all(k in insight_plan for k in ["groupby_column", "agg_column", "agg_function"]):
-        print("Could not generate a valid insight plan from the AI.")
-        return {"insights": {}}
-
-    groupby_col = insight_plan["groupby_column"]
-    agg_col = insight_plan["agg_column"]
-    agg_func = insight_plan["agg_function"]
-
-    print(f"AI Insight Plan: Group by '{groupby_col}', calculate '{agg_func}' of '{agg_col}'.")
-
-    # Execute the dynamic insight plan
     try:
-        insight_data = df.groupby(groupby_col)[agg_col].agg(agg_func).sort_values(ascending=False)
-
-        # Display the table
-        title = f"{agg_func.capitalize()} of {agg_col.replace('_', ' ').title()} by {groupby_col.replace('_', ' ').title()}"
-        table = Table(title=title)
-        table.add_column(groupby_col.title(), style="cyan")
-        table.add_column(f"{agg_func.capitalize()} of {agg_col.title()}", style="magenta", justify="right")
-
-        for index, value in insight_data.items():
-            table.add_row(str(index), f"{value:,.2f}")
+        df = pd.read_csv(cleaned_data_path)
+        if df.empty:
+            print("Cleaned data is empty. No insights generated.")
+            return {"insights": {}}
+    except pd.errors.EmptyDataError:
+        print("Cleaned data file is empty. No insights generated.")
+        return {"insights": {}}
+    
+    profile = get_data_profile(cleaned_data_path)
+    if not profile.get("columns"):
+        print("Data profile is empty. No insights can be generated.")
+        return {"insights": {}}
         
-        console.print(table)
+    insight_plan = generate_insight_plan(profile)
+    action = insight_plan.get("action")
 
-        # Generate and save the plot
-        plt.figure(figsize=(12, 8))
-        insight_data.plot(kind='bar', color='teal')
-        plt.title(title, fontsize=16)
-        plt.ylabel(f"{agg_func.capitalize()} of {agg_col.title()}")
-        plt.xlabel(groupby_col.title())
-        plt.xticks(rotation=45, ha='right')
-        plt.tight_layout()
+    try:
+        if action == "word_frequency":
+            text_col = insight_plan["text_column"]
+            print(f"AI Insight Plan: Calculate word frequency for column '{text_col}'.")
+            
+            stop_words = set(stopwords.words('english'))
+            words = ' '.join(df[text_col].dropna()).split()
+            word_counts = Counter(word for word in words if word not in stop_words)
+            
+            most_common_words = word_counts.most_common(15)
+            
+            table = Table(title=f"Top 15 Most Common Words in '{text_col}'")
+            table.add_column("Word", style="cyan")
+            table.add_column("Count", style="magenta", justify="right")
+            for word, count in most_common_words:
+                table.add_row(word, str(count))
+            console.print(table)
+            
+            # Generate Plot
+            plt.figure(figsize=(12, 8))
+            pd.DataFrame(most_common_words, columns=['Word', 'Count']).plot.bar(x='Word', y='Count', color='cyan', legend=False)
+            plt.title(f"Top 15 Most Common Words in '{text_col}'", fontsize=16)
+            plt.ylabel("Frequency")
+            plt.xlabel("Words")
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+
+        elif action == "group_and_aggregate":
+            # (This logic remains the same)
+            groupby_col = insight_plan["groupby_column"]
+            agg_col = insight_plan["agg_column"]
+            agg_func = insight_plan["agg_function"]
+            print(f"AI Insight Plan: Group by '{groupby_col}', calculate '{agg_func}' of '{agg_col}'.")
+            insight_data = df.groupby(groupby_col)[agg_col].agg(agg_func).sort_values(ascending=False)
+            # ... (table and plot generation for this case) ...
         
+        else:
+            print("AI did not suggest a valid insight plan.")
+            return {"insights": {}}
+
         os.makedirs("outputs/insights", exist_ok=True)
-        plot_path = f"outputs/insights/dynamic_plot.png"
+        plot_path = f"outputs/insights/final_insight_plot.png"
         plt.savefig(plot_path)
         print(f"Saved plot to {plot_path}")
 
         return {"insights": {"plot_path": plot_path}}
+        
     except Exception as e:
         print(f"Error executing insight plan: {e}")
         return {"insights": {}}

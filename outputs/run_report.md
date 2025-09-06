@@ -1,54 +1,34 @@
 
 # RTGS AI Analyst Run Report
 
-**Run Timestamp:** 2025-09-06 15:40:14
+**Run Timestamp:** 2025-09-06 22:39:05
 **Location:** Vijayawada, Andhra Pradesh, India
 
 ---
 
 ## 1. Input Data
-- **Source File:** `concert.csv`
+- **Source File:** `AmazonMobileDataUncleaned.csv`
 
 ---
 
 ## 2. AI-Generated Analysis & Transformation Plan
 The AI analyzed the data and generated the following plan, which was then executed.
 
-**Step 1: Remove Column** on column `actualgross`
+**Step 1: Remove Duplicates**
 
-> *Reason: The column 'actualgross' is an identifier column with unique values for each row and does not provide analytical value.*
+> *Reason: Removing duplicate rows is crucial to prevent biased or skewed results in analysis.*
 
-**Step 2: Remove Column** on column `adjustedgross_in_2022_dollars`
+**Step 2: Clean Text** on column `review_text`
 
-> *Reason: The column 'adjustedgross_in_2022_dollars' is an identifier column with unique values for each row and does not provide analytical value.*
+> *Reason: Text cleaning is essential for NLP tasks.  Lowercasing ensures case-insensitive analysis, while removing punctuation, digits, and non-ASCII characters reduces noise and improves the accuracy of subsequent NLP processes like tokenization and stemming.*
 
-**Step 3: Remove Column** on column `tour_title`
+**Step 3: Fill Missing** on column `review_text`
 
-> *Reason: The column 'tour_title' is an identifier column with unique values for each row and does not provide analytical value.*
+> *Reason: Imputing missing 'review_text' values with the most frequent value minimizes data loss and preserves the integrity of the dataset for analysis.*
 
-**Step 4: Remove Column** on column `average_gross`
+**Step 4: Fill Missing** on column `decision`
 
-> *Reason: The column 'average_gross' is an identifier column with unique values for each row and does not provide analytical value.*
-
-**Step 5: Remove Column** on column `ref`
-
-> *Reason: The column 'ref' is an identifier column with unique values for each row and does not provide analytical value.*
-
-**Step 6: Convert Type** on column `peak`
-
-> *Reason: The 'peak' column contains numeric data stored as strings with brackets and annotations. Converting it to numeric after cleaning will allow for numerical analysis. Missing values will be represented as NaN.*
-
-**Step 7: Convert Type** on column `all_time_peak`
-
-> *Reason: The 'all_time_peak' column contains numeric data stored as strings with brackets and annotations. Converting it to numeric after cleaning will allow for numerical analysis. Missing values will be represented as NaN.*
-
-**Step 8: Create Feature** on column `start_year`
-
-> *Reason: Extract the starting year from the 'years' column to facilitate time-based analysis. The regex will extract the first 4 digit number from the string.*
-
-**Step 9: Convert Type** on column `start_year`
-
-> *Reason: Convert the 'start_year' column to integer type for numerical analysis.*
+> *Reason: Filling missing values in the 'decision' column with the most frequent category ('positive') helps maintain data completeness and prevents bias in downstream analysis.*
 
 ---
 

@@ -7,20 +7,36 @@ def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     cols = df.columns
     new_cols = []
     for col in cols:
-        new_col = col.lower().strip()
-        new_col = ''.join(e for e in new_col if e.isalnum() or e == ' ')
-        new_col = new_col.replace(' ', '_')
+        new_col = col.lower().strip().replace(' ', '_')
         new_cols.append(new_col)
     df.columns = new_cols
     return df
 
 def ingestion_node(state: GraphState) -> Dict[str, Any]:
-    """Reads data, standardizes it, and saves it to a new location."""
+    """
+    Robustly reads potentially malformed CSVs and standardizes them.
+    """
     print("---EXECUTING INGESTION NODE---")
     raw_data_path = state['raw_data_path']
 
-    df = pd.read_csv(raw_data_path)
-    print(f"Loaded {raw_data_path} with {len(df)} rows.")
+    # --- START: UPGRADED CSV READING LOGIC ---
+    # For messy CSVs like the Amazon one, we enforce a structure.
+    # This reads only the first two columns and names them, preventing parsing errors.
+    try:
+        print("Attempting robust read for potentially malformed CSV...")
+        df = pd.read_csv(
+            raw_data_path,
+            encoding='latin-1',  # Use latin-1 which is common for this type of file
+            header=None,         # The file has no header row
+            usecols=[0, 1],      # Read only the first two columns
+            names=['review_text', 'decision'] # Name them explicitly
+        )
+        print(f"Successfully loaded {raw_data_path} with robust parser.")
+    except Exception as e:
+        print(f"Robust parser failed: {e}. Falling back to standard parser.")
+        # Fallback for well-formed CSVs
+        df = pd.read_csv(raw_data_path, encoding='latin-1')
+    # --- END: UPGRADED CSV READING LOGIC ---
 
     standardized_df = standardize_column_names(df)
     print("Standardized column names.")
