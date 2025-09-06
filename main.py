@@ -8,7 +8,7 @@ from agents.cleaning import cleaning_node
 
 console = Console()
 app = typer.Typer()
-file_loc = "AmazonMobileDataUncleaned.csv"
+file_loc = "TG-NPDCL_consumption_detail_agriculture_AUGUST-2025.csv"
 @app.command()
 def run(input_file: str = typer.Argument(file_loc, help=file_loc)):
     """Runs the full data analysis pipeline with AI-driven cleaning."""
