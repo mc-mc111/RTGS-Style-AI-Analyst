@@ -12,31 +12,55 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
         
     for step in plan["steps"]:
         action = step.get("action")
-        column = step.get("column")
         details = step.get("details", {})
-        
-        print(f"Executing: {action} on column '{column or 'all'}'")
+        column = step.get("column") or details.get("column")
+        reason = step.get("reason", "No reason provided.")
+
+        log_message = f"Action: {action}, Column: '{column or 'all'}', Reason: {reason}"
+        print(log_message)
         
         try:
             if action == "remove_duplicates":
                 df_cleaned.drop_duplicates(inplace=True)
+            
+            elif action == "remove_column" and column:
+                df_cleaned.drop(columns=[column], inplace=True)
+            
             elif action == "convert_type" and column:
                 new_type = details.get("new_type")
-                # Handle potential errors during conversion
-                df_cleaned[column] = pd.to_numeric(df_cleaned[column], errors='coerce') if new_type in ['int', 'float'] else df_cleaned[column]
-                df_cleaned = df_cleaned.astype({column: new_type})
+                pre_processing_steps = details.get("pre_processing", [])
+                temp_col = df_cleaned[column].astype(str)
+                if "remove_currency" in pre_processing_steps:
+                    temp_col = temp_col.str.replace('$', '', regex=False)
+                if "remove_commas" in pre_processing_steps:
+                    temp_col = temp_col.str.replace(',', '', regex=False)
+                if "remove_brackets" in pre_processing_steps:
+                    temp_col = temp_col.str.replace(r'\[.*?\]', '', regex=True)
+                df_cleaned[column] = pd.to_numeric(temp_col, errors='coerce')
+                if df_cleaned[column].isnull().any():
+                    df_cleaned[column].fillna(0, inplace=True)
+                if new_type in ['int64', 'float64']:
+                    df_cleaned = df_cleaned.astype({column: new_type})
+            
             elif action == "fill_missing" and column:
                 strategy = details.get("strategy")
+                fill_value = 0
                 if strategy == "mean":
                     fill_value = df_cleaned[column].mean()
                 elif strategy == "median":
                     fill_value = df_cleaned[column].median()
                 elif strategy == "mode":
                     fill_value = df_cleaned[column].mode()[0]
-                else: # 'value' strategy
+                else:
                     fill_value = details.get("fill_value", 0)
                 df_cleaned[column].fillna(fill_value, inplace=True)
-        
+            
+            elif action == "create_feature":
+                new_col = details.get("new_column_name")
+                expression = details.get("expression")
+                if new_col and expression:
+                    df_cleaned[new_col] = df_cleaned.eval(expression)
+
         except Exception as e:
             print(f"Could not execute step {step}. Error: {e}")
             
@@ -50,8 +74,7 @@ def cleaning_node(state: GraphState) -> Dict[str, Any]:
 
     df = pd.read_csv(standardized_data_path)
     print(f"Loaded {standardized_data_path}.")
-    print(f"Received cleaning plan: {plan}")
-
+    
     cleaned_df = execute_plan(df, plan)
 
     cleaned_data_path = "outputs/2_cleaned_data.csv"
@@ -60,5 +83,5 @@ def cleaning_node(state: GraphState) -> Dict[str, Any]:
 
     return {
         "cleaned_data_path": cleaned_data_path,
-        "log_messages": state['log_messages'] + ["Dynamic cleaning complete."]
+        "log_messages": state.get('log_messages', []) + ["Dynamic cleaning complete."]
     }
