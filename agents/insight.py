@@ -1,3 +1,4 @@
+import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -27,7 +28,7 @@ console = Console()
 def _create_markdown_table(data: pd.Series, index_name: str, value_name: str) -> str:
     """Converts a pandas Series into a Markdown table string."""
     headers = f"| {index_name} | {value_name} |\n"
-    separator = f"|:---|---:|\n" # Add alignment
+    separator = f"|:---|---:|\n"
     rows = ""
     for index, value in data.items():
         try:
@@ -42,42 +43,39 @@ def _create_stats_markdown_table(stats_dict: Dict[str, Any]) -> str:
     separator = "|:---|---:|\n"
     rows = ""
     for key, value in stats_dict.items():
-        # Handle non-numeric stats gracefully
         try:
             rows += f"| {key.replace('_', ' ').title()} | {float(value):,.2f} |\n"
         except (ValueError, TypeError):
              rows += f"| {key.replace('_', ' ').title()} | {value} |\n"
     return headers + separator + rows
 
-# --- START: NEW BATCH INTERPRETATION FUNCTION ---
 def generate_findings_in_batch(interpretation_requests: List[Dict[str, Any]]) -> List[str]:
-    """Sends a batch of interpretation requests to the AI in a single, efficient call."""
-    logger.debug(f"Generating {len(interpretation_requests)} findings in a single batch...")
+    """Sends a batch of interpretation requests to the AI to get actionable recommendations."""
+    logger.debug(f"Generating {len(interpretation_requests)} recommendations in a single batch...")
     
-    # Create a single, large prompt with all the requests
-    prompt = "You are a data analyst summarizing key findings for a report.\n"
-    prompt += "For each of the following numbered analyses, provide a concise, one-sentence observation that directly answers the question based on the provided stats.\n\n"
-
+    # --- START: PROMPT UPGRADE TO POLICY ADVISOR ---
+    prompt = "You are a senior policy advisor writing a brief for a decision-maker.\n"
+    prompt += "For each of the following numbered analyses, provide a concise, one-sentence actionable policy recommendation based on the key stats. The recommendation should be data-driven and suggest a clear next step or area of focus.\n\n"
+    
     for i, req in enumerate(interpretation_requests):
         prompt += f"--- Analysis {i+1} ---\n"
         prompt += f"Question: {req['question']}\n"
-        prompt += f"Key Stats: {json.dumps(req['stats'])}\n\n"
+        prompt += f"Key Stats: {json.dumps(req['stats'])}\n"
+        prompt += "Example Recommendation: Policymakers should investigate the high service load in the 'Warangal' division to determine if resources are allocated effectively.\n\n"
 
-    prompt += "Provide your findings as a numbered list of sentences, with each finding on a new line."
+    prompt += "Provide your recommendations as a numbered list of sentences, with each recommendation on a new line."
+    # --- END: PROMPT UPGRADE ---
 
     model = genai.GenerativeModel("gemini-1.5-flash-latest")
     try:
         response = model.generate_content(prompt)
-        # Split the numbered list response into individual findings
         findings = [line.strip().split('. ', 1)[1] for line in response.text.strip().split('\n') if '. ' in line]
-        # Ensure we return the correct number of findings, even if the AI messes up
         if len(findings) != len(interpretation_requests):
-             return ["An AI-generated finding could not be produced." for _ in interpretation_requests]
+             return ["An AI-generated recommendation could not be produced." for _ in interpretation_requests]
         return findings
     except Exception as e:
-        logger.error(f"Error generating batch insight findings: {e}")
-        return ["An AI-generated finding could not be produced." for _ in interpretation_requests]
-# --- END: NEW BATCH INTERPRETATION FUNCTION ---
+        logger.error(f"Error generating batch recommendations: {e}")
+        return ["An AI-generated recommendation could not be produced." for _ in interpretation_requests]
 
 
 def generate_insight_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
@@ -95,7 +93,7 @@ def generate_insight_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
 
     **CRITICAL Instructions:**
     1.  Suggest a list of 3 to 5 diverse analyses.
-    2.  For EACH analysis, provide a "question_to_answer" that the analysis will address. This frames the analysis as a hypothesis.
+    2.  For EACH analysis, provide a "question_to_answer" that the analysis will address.
     3.  Prioritize insights that reveal distributions, correlations, and group-by comparisons.
     4.  Choose the most impactful columns for your analysis.
 
@@ -129,6 +127,17 @@ def insight_node(state: GraphState) -> Dict[str, Any]:
     Executes analyses, generates plots, and interprets all results in a single batch.
     """
     logger.info("    - Executing: Automated EDA & Interpretation Node")
+    insights_dir = "outputs/insights"
+    if os.path.exists(insights_dir):
+        logger.debug(f"Cleaning old plots from '{insights_dir}'...")
+        old_plots = glob.glob(os.path.join(insights_dir, "*.png"))
+        for plot in old_plots:
+            try:
+                os.remove(plot)
+            except OSError as e:
+                logger.error(f"Error removing old plot {plot}: {e}")
+    os.makedirs(insights_dir, exist_ok=True)
+
     cleaned_data_path = state['cleaned_data_path']
     
     try:
@@ -149,9 +158,8 @@ def insight_node(state: GraphState) -> Dict[str, Any]:
     analysis_tasks = insight_plan.get("analyses", [])
     
     generated_insights = []
-    interpretation_batch = [] # To hold all requests for the AI
+    interpretation_batch = []
 
-    # --- START: RESTRUCTURED LOOP (Phase 1: Generate & Gather) ---
     for i, task in enumerate(analysis_tasks):
         action = task.get("action")
         details = task.get("details", {})
@@ -165,11 +173,8 @@ def insight_node(state: GraphState) -> Dict[str, Any]:
             stats_for_ai = None
             markdown_table = None
 
-            # --- START: DEFINITIVE BUG FIX ---
             if action == "distribution" and details.get("column") in df.columns:
                 col = details["column"]
-                
-                # Check if the column is numeric or text-like and use the correct tool
                 if pd.api.types.is_numeric_dtype(df[col]):
                     title = f"Distribution of '{col}'"
                     data_to_describe = df[col].dropna()
@@ -180,10 +185,8 @@ def insight_node(state: GraphState) -> Dict[str, Any]:
                 sns.histplot(data_to_describe, kde=True, color='skyblue')
                 plt.title(title, fontsize=16)
                 stats = data_to_describe.describe().to_dict()
-                # Ensure all stats are serializable and correctly rounded
                 stats_for_ai = {k: round(v, 2) for k, v in stats.items() if pd.notna(v)}
                 markdown_table = _create_stats_markdown_table(stats_for_ai)
-            # --- END: DEFINITIVE BUG FIX ---
 
             elif action == "correlation" and all(k in details for k in ["column_x", "column_y"]):
                 col_x, col_y = details["column_x"], details["column_y"]
@@ -252,7 +255,6 @@ def insight_node(state: GraphState) -> Dict[str, Any]:
             plt.close()
             logger.debug(f"Saved plot to {plot_path}")
             
-            # Add the generated data to our lists *before* the AI interpretation call
             insight_info = {
                 "summary": title, 
                 "plot_path": plot_path,
@@ -266,18 +268,14 @@ def insight_node(state: GraphState) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Could not execute analysis task {task}. Error: {e}", exc_info=True)
             plt.close()
-    # --- END: RESTRUCTURED LOOP ---
 
-    # --- START: NEW BATCH INTERPRETATION (Phase 2: Interpret ALL at once) ---
     if interpretation_batch:
         findings = generate_findings_in_batch(interpretation_batch)
         
-        # Safely add the findings back to our generated_insights list
         for i in range(len(generated_insights)):
             if i < len(findings):
                 generated_insights[i]["finding"] = findings[i]
             else:
                 generated_insights[i]["finding"] = "An AI-generated finding could not be produced for this insight."
-    # --- END: NEW BATCH INTERPRETATION ---
             
     return {"insights": {"generated_insights": generated_insights}}

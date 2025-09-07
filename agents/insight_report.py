@@ -32,7 +32,7 @@ def generate_dataset_summary(profile: Dict[str, Any]) -> str:
     Generate the summary paragraph now.
     """
     
-    model = genai.GenerativeModel("gemini-2.0-flash") # Corrected model name
+    model = genai.GenerativeModel("gemini-1.5-flash-latest") # Corrected model name
     
     try:
         response = model.generate_content(prompt)
@@ -73,24 +73,25 @@ def insight_report_node(state: GraphState) -> Dict[str, Any]:
             summary = insight.get('summary', 'Untitled Insight')
             plot_path = insight.get('plot_path')
             question = insight.get('question', 'No question was provided for this analysis.')
-            finding = insight.get('finding', 'No finding was generated for this analysis.')
-            # --- START: NEW TABLE EXTRACTION AND DISPLAY ---
-            markdown_table = insight.get('markdown_table') # Get the table string
+            finding = insight.get('finding', 'No recommendation was generated for this analysis.')
+            markdown_table = insight.get('markdown_table')
             
             report_lines.append(f"\n### {summary}")
             report_lines.append(f"> **Question:** *{question}*")
 
             if markdown_table:
                 report_lines.append("\n**Summary Data:**")
-                report_lines.append(markdown_table) # Add the Markdown table to the report
+                report_lines.append(markdown_table)
 
             if plot_path:
                 relative_path = os.path.basename(plot_path)
                 report_lines.append(f"\n**Visualization:**")
                 report_lines.append(f"![{summary}]({relative_path})")
 
-            report_lines.append(f"\n**Finding:** {finding}")
-            # --- END: NEW TABLE EXTRACTION AND DISPLAY ---
+            # --- START: FINAL UPGRADE ---
+            # Change the label from "Finding" to "Recommendation"
+            report_lines.append(f"\n**Recommendation:** {finding}")
+            # --- END: FINAL UPGRADE ---
     
     report_lines.append("\n---\n*End of Report*")
     
