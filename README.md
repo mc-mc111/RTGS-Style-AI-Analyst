@@ -125,7 +125,20 @@ This document lists the primary datasets used for the development and final demo
 ![run report](screenshots/3.png)  
 ![insight report](screenshots/4.png)
 
+## 📄 Expected Outputs
+
+After a successful run, you will find the following artifacts in the `outputs/` directory:
+
+* **`1_standardized_data.csv`**: The data after initial ingestion.
+
+* **`2_cleaned_data.csv`**: The final, cleaned, and preprocessed dataset ready for machine learning.
+
+* **`outputs/insights/`**: This folder will contain all the generated plots as `.png` files.
+
 * **`outputs/insights/insight_report.md`**: A detailed, human-readable report of the automated exploratory data analysis, complete with embedded plots and AI-driven interpretations.
+
+---
+
 ## 🙋‍♂️ Author
 [Manicharan]  
 Email: [manicharan.nulu1@gmail.com]  
