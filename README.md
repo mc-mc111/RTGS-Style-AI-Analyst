@@ -1,7 +1,7 @@
 # RTGS-Style AI Analyst
 
 **\[Link to Demo\]**  
-**\[For more details refer to documentation folder\]**
+**\[For more details refer to RTGS-AI-ANALYST-DOCUMENTATION.pdf\]**
 
 A terminal-based agentic system that transforms raw, messy datasets into standardized, analysis-ready insights. This prototype uses a state-driven graph and a Large Language Model (LLM) to create and execute dynamic data cleaning, feature engineering, and automated exploratory data analysis plans.
 
@@ -81,6 +81,49 @@ After a successful run, you will find the following artifacts in the `outputs/` 
 * **`2_cleaned_data.csv`**: The final, cleaned, and preprocessed dataset ready for downstream analysis.
 
 * **`outputs/insights/`**: This folder will contain all the generated plots as `.png` files.
+
+# Dataset Manifest
+
+This document lists the primary datasets used for the development and final demonstration of the RTGS AI Analyst.
+
+---
+
+### 1. Final Demonstration Dataset (Mission Focus)
+
+-   **Dataset Name:** [TGSNPDCL Agriculture Consumption Data](https://data.telangana.gov.in/dataset/tgspdcl-agriculture-consumption-data)
+-   **Sector:** Energy & Power (Telangana Open Data Portal)
+-   **Why it Matters for Governance:** This dataset provides detailed monthly electricity consumption for agricultural services. Analyzing this data is critical for policymakers to:
+    -   Track and forecast energy demand in a vital sector.
+    -   Plan for infrastructure upgrades and prevent power shortages.
+    -   Assess the financial impact of electricity subsidies for farmers.
+-   **Scope Used:** Full dataset for a given month.
+-   **Why it was chosen for the final run:** This dataset was selected for the final demonstration as it directly fulfills the project's core mission: turning Telangana's public data into clear, actionable insights that can inform real-world governance and policy decisions.
+
+---
+
+### 2. Advanced Capability & Stress Testing
+
+-   **Dataset Name:** [Cardiovascular Disease Dataset (Kaggle)](https://www.kaggle.com/datasets/sulianova/cardiovascular-disease-dataset)
+-   **Sector:** Healthcare
+-   **Why it Matters for Governance:** This is a classic public health dataset containing patient clinical data. This type of data is essential for identifying risk factors, developing preventative care strategies, and informing healthcare resource allocation.
+-   **Key Fields of Focus:** `age`, `gender`, `height`, `weight`, `blood_pressure`, `cholesterol`, `cardio` (presence of disease).
+-   **Why it was used:** This dataset served as an excellent stress test to develop and validate the system's most advanced data science capabilities. It successfully demonstrated the AI's ability to perform high-end machine learning preprocessing tasks like creating a BMI feature, converting age from days to years, and applying feature scaling (normalization/standardization).
+
+---
+
+### 3. Robustness & Edge Case Testing
+
+-   **Dataset Name:** [Amazon Mobile Data Uncleaned](https://drive.google.com/file/d/1Lla_LUP6DNie7IFElxyRPSVGNDYEHz40/view?usp=sharing) 
+-   **Sector:** E-commerce / Consumer Sentiment
+-   **Why it Matters for Governance:** While not a traditional governance dataset, analyzing unstructured public sentiment is a critical capability. This dataset served as a proxy for this type of challenge.
+-   **Key Fields of Focus:** `review_text`, `decision`.
+-   **Why it was used:** This dataset was uniquely valuable because it was **fundamentally broken**, containing a mix of well-structured text, corrupted binary data, and malformed CSV structure. It was the ultimate stress test for the **Ingestion Agent**, forcing the development of a "smart hybrid" parser that could intelligently handle a severely corrupted file. This proves the system is resilient and not limited to perfectly structured data.
+
+## 📸 Screenshots
+![cli - 1](screenshots/1.png)  
+![cli - 2](screenshots/2.png)  
+![run report](screenshots/3.png)  
+![insight report](screenshots/4.png)
 
 * **`outputs/insights/insight_report.md`**: A detailed, human-readable report of the automated exploratory data analysis, complete with embedded plots and AI-driven interpretations.
 ## 🙋‍♂️ Author
