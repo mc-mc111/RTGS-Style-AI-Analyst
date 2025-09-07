@@ -12,7 +12,10 @@ try:
     from agents.planning import planning_node
     from agents.cleaning import cleaning_node
     from agents.insight import insight_node
-    from agents.documentation import documentation_node
+    # --- START: UPGRADE - Re-import BOTH report builders ---
+    from agents.insight_report import insight_report_node
+    from agents.documentation import documentation_node # Re-import the original report node
+    # --- END: UPGRADE ---
 except ImportError as e:
     # This will catch errors like the one you saw if a module is missing or has an issue
     print("\n[ERROR] A critical error occurred during application startup.")
@@ -32,10 +35,10 @@ app = typer.Typer()
 
 @app.command()
 def run(input_file: str = typer.Argument(..., help="Path to the input CSV file.")):
-    """Runs the full data analysis pipeline with a clean, logged interface."""
+    """Runs the full Automated EDA pipeline with a clean, logged interface."""
     
     try:
-        logger.info("[bold green]Starting RTGS AI Analyst Pipeline...[/bold green]")
+        logger.info("[bold green]Starting Automated EDA Pipeline...[/bold green]")
         
         # --- Pre-flight Checks ---
         logger.info(f"--> Verifying input file: '{input_file}'")
@@ -51,24 +54,33 @@ def run(input_file: str = typer.Argument(..., help="Path to the input CSV file."
         workflow.add_node("plan", planning_node)
         workflow.add_node("clean", cleaning_node)
         workflow.add_node("insight", insight_node)
-        workflow.add_node("document", documentation_node)
+        # --- START: UPGRADE - Add BOTH report nodes to the graph ---
+        workflow.add_node("documentation", documentation_node) # The original technical report
+        workflow.add_node("insight_report", insight_report_node) # The new analytical report
+        
         workflow.set_entry_point("ingest")
         workflow.add_edge("ingest", "plan")
         workflow.add_edge("plan", "clean")
         workflow.add_edge("clean", "insight")
-        workflow.add_edge("insight", "document")
-        workflow.add_edge("document", END)
+        # Re-wire the final steps to run both report builders in sequence
+        workflow.add_edge("insight", "documentation")
+        workflow.add_edge("documentation", "insight_report")
+        workflow.add_edge("insight_report", END)
+        # --- END: UPGRADE ---
         graph = workflow.compile()
 
         # --- Execute Pipeline ---
         initial_state = {"raw_data_path": input_file}
-        logger.info("--> Executing data processing pipeline...")
+        logger.info("--> Executing data processing and analysis pipeline...")
         final_state = graph.invoke(initial_state)
 
-        logger.info("\n[bold green]Pipeline run complete! All artifacts generated.[/bold green]")
-        logger.info(f"    - Final Report: {final_state.get('documentation_path')}")
+        logger.info("\n[bold green]Automated EDA Pipeline Complete![/bold green]")
+        # --- START: UPGRADE - Update the final message to mention both reports ---
+        # The documentation_path key will now point to the last report generated
+        logger.info(f"    - Analytical Insight Report: outputs/insights/insight_report.md")
+        logger.info(f"    - Technical Run Report: outputs/run_report.md")
         logger.info(f"    - Cleaned Data: {final_state.get('cleaned_data_path')}")
-        logger.info(f"    - Insight Plot: {final_state.get('insights', {}).get('plot_path')}")
+        # --- END: UPGRADE ---
 
     except PermissionError as e:
         logger.critical("PermissionError occurred:", exc_info=True)

@@ -1,4 +1,3 @@
- 
 from typing import TypedDict, List, Dict, Any
 
 class GraphState(TypedDict):
@@ -13,6 +12,11 @@ class GraphState(TypedDict):
 
     # The AI-generated plan for cleaning the data
     cleaning_plan: Dict[str, Any]
+
+    # --- START: NEW ADDITION ---
+    # The statistical profile of the data, to be used for the final report
+    data_profile: Dict[str, Any]
+    # --- END: NEW ADDITION ---
 
     # A running log of actions taken during the process
     log_messages: List[str]

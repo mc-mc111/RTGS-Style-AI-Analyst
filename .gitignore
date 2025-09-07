@@ -1,8 +1,5 @@
 .venv/ 
 __pycache__/ 
 .env 
-AmazonMobileDataUncleaned.csv
-cardiouncleaned.csv
-concert.csv
-empty.csv
-Registration_updated.csv
+datasets/
+logs/

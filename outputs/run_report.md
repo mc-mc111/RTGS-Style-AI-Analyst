@@ -1,50 +1,58 @@
 
 # RTGS AI Analyst Run Report
 
-**Run Timestamp:** 2025-09-07 13:09:36
+**Run Timestamp:** 2025-09-07 17:18:19
 **Location:** Vijayawada, Andhra Pradesh, India
 
 ---
 
 ## 1. Input Data
-- **Source File:** `AmazonMobileDataUncleaned.csv`
+- **Source File:** `TG-NPDCL_consumption_detail_agriculture_AUGUST-2025.csv`
 
 ---
 
 ## 2. AI-Generated Analysis & Transformation Plan
 The AI analyzed the data and generated the following plan, which was then executed.
 
-**Step 1: Clean Text** on column `review_text`
-
-> *Reason: Cleaning the review text by lowercasing, removing punctuation, digits, and non-ASCII characters is crucial for effective text analysis and NLP tasks.*
-
-**Step 2: Clean Categorical** on column `decision`
-
-> *Reason: Cleaning the 'decision' column ensures it only contains 'positive' or 'negative' values, which is essential for accurate grouping and analysis. Other values appear to be noise.*
-
-**Step 3: Remove Column** on column `unnamed2`
-
-> *Reason: The 'unnamed2' column has a very high percentage of missing values and appears to contain random strings, making it useless for analysis.*
-
-**Step 4: Remove Column** on column `unnamed3`
-
-> *Reason: The 'unnamed3' column has a very high percentage of missing values and appears to contain random strings, making it useless for analysis.*
-
-**Step 5: Remove Column** on column `unnamed4`
-
-> *Reason: The 'unnamed4' column has a very high percentage of missing values and appears to contain random strings, making it useless for analysis.*
-
-**Step 6: Remove Duplicates**
+**Step 1: Remove Duplicates**
 
 > *Reason: Removing duplicate rows ensures that the analysis is not skewed by repeated data.*
 
-**Step 7: Fill Missing** on column `review_text`
+**Step 2: Convert Type** on column `totservices`
 
-> *Reason: Filling missing values in 'review_text' ensures that all reviews are accounted for in the analysis. Filling with 'missing' will allow us to keep track of the rows that had missing values.*
+> *Reason: Converting 'totservices' to a numeric type allows for calculations and analysis.*
 
-**Step 8: Fill Missing** on column `decision`
+**Step 3: Convert Type** on column `billedservices`
 
-> *Reason: Filling missing values in 'decision' with the mode ensures that the most frequent category is used, minimizing potential bias.*
+> *Reason: Converting 'billedservices' to a numeric type allows for calculations and analysis.*
+
+**Step 4: Convert Type** on column `units`
+
+> *Reason: Converting 'units' to a numeric type allows for calculations and analysis.*
+
+**Step 5: Fill Missing** on column `totservices`
+
+> *Reason: Filling missing values in 'totservices' with the mean preserves data and allows for further analysis.*
+
+**Step 6: Fill Missing** on column `billedservices`
+
+> *Reason: Filling missing values in 'billedservices' with the mean preserves data and allows for further analysis.*
+
+**Step 7: Fill Missing** on column `units`
+
+> *Reason: Filling missing values in 'units' with the mean preserves data and allows for further analysis.*
+
+**Step 8: Scale Numeric** on column `load`
+
+> *Reason: Scaling the 'load' column to a range between 0 and 1 using min-max normalization will improve the performance of machine learning models.*
+
+**Step 9: Remove Column** on column `catcode`
+
+> *Reason: The 'catcode' column has only one unique value, making it useless for analysis.*
+
+**Step 10: Remove Column** on column `catdesc`
+
+> *Reason: The 'catdesc' column has only one unique value, making it useless for analysis.*
 
 ---
 
