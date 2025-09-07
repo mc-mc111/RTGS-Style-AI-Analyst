@@ -26,18 +26,41 @@ def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     logger.info("    Internet connection verified.")
     
     prompt = f"""
-    You are an expert data scientist. Your task is to generate a JSON object with a 'steps' key
+    You are an expert data scientist preparing a dataset for machine learning. Your task is to generate a JSON object with a 'steps' key
     containing a list of actions to clean and enhance a pandas DataFrame based on its data profile.
 
     **CRITICAL Instructions:**
     1.  **Include a "reason" for every single step.** Explain why the action is necessary for analysis.
-    2.  **Clean Categorical Columns:** If a column like 'decision' or 'sentiment' appears to be a category but has messy values, suggest the `clean_categorical` action to normalize it.
-    3.  **PRIORITIZE TEXT COLUMNS:** If you see columns with names like 'review' or 'text', assume they are important. Suggest the `clean_text` action for them.
-    4.  **Handle Duplicates and Unnecessary Columns:** Always suggest removing duplicates and any truly useless columns.
-    5.  **Clean Messy Numeric Data:** Suggest `convert_type` with `pre_processing` for object columns that contain numbers.
-    6.  **Engineer Features:** Suggest `create_feature` where it provides clear value.
+    
+    # --- START: FINAL UPGRADE ---
+    2.  **Use Categorical Cleaning Wisely:** ONLY suggest the `clean_categorical` action for columns that have a very low number of unique values (e.g., less than 10), like a 'sentiment' or 'status' column. Do NOT use it for columns with many unique values like city or district names.
+    # --- END: FINAL UPGRADE ---
+
+    3.  **Improve Readability:** If a column is named 'age' and its mean value is over 365, it is likely in days. You MUST suggest a `create_feature` step to create a new 'age_in_years' column by dividing 'age' by 365.25. Then, suggest removing the original 'age' column.
+    4.  **Encode Binary Categories:** If a column has only two unique values (like 'yes'/'no' or 'true'/'false'), suggest the `encode_binary` action to convert them to 1s and 0s for modeling.
+    5.  **Scale Numeric Features:** For important numeric columns that are not identifiers, suggest the `scale_numeric` action to normalize or standardize their values. Prefer 'min_max' scaling.
+    6.  **PRIORITIZE TEXT COLUMNS:** If you see columns with names like 'review' or 'text', assume they are important. Suggest the `clean_text` action for them.
+    7.  **Handle Duplicates and Unnecessary Columns:** Always suggest removing duplicates and any truly useless columns.
+    8.  **Clean Messy Numeric Data:** Suggest `convert_type` with `pre_processing` for object columns that contain numbers.
+    9.  **Engineer Features:** Suggest `create_feature` where it provides clear value for simple mathematical expressions.
+    10. **Use Custom Functions for Complex Tasks:** For complex transformations that require specific logic, like calculating the number of years from a date range (e.g., '2023-24'), suggest the `execute_custom_function` action and specify the `calculate_year_span` helper function.
 
     **Allowed Actions & Required JSON Structure:**
+
+    - **action: "encode_binary"**
+      - **column**: The binary categorical column (e.g., "smoker").
+      - **details**: {{"positive_value": "yes"}}  (The value that should map to 1).
+      - **reason**: Explain that converting categories to numbers is essential for machine learning models.
+
+    - **action: "scale_numeric"**
+      - **column**: The numeric column to scale (e.g., "age").
+      - **details**: {{"strategy": "min_max"}} (Can be 'min_max' for normalization or 'standard' for standardization).
+      - **reason**: Explain that scaling features to a similar range improves the performance of many ML models.
+
+    - **action: "execute_custom_function"**
+      - **column**: The name of the new column to create (e.g., "tour_duration_years").
+      - **details**: {{"function_name": "calculate_year_span", "source_column": "years"}}
+      - **reason**: Explain that a specialized function is needed for this complex transformation.
 
     - **action: "clean_categorical"**
       - **column**: The categorical column to clean (e.g., "decision").
@@ -85,7 +108,8 @@ def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
         "response_mime_type": "application/json",
     }
     
-    model = genai.GenerativeModel("gemini-1.5-flash-latest", generation_config=generation_config)
+    # Corrected model name to the one that works
+    model = genai.GenerativeModel("gemini-2.0-flash", generation_config=generation_config)
     
     try:
         response = model.generate_content(prompt)
