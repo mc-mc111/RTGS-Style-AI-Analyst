@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 from typing import Dict, Any
+from agents.logger import logger
+
 
 def profile_in_memory(df: pd.DataFrame) -> Dict[str, Any]:
     """Generates a statistical profile for a DataFrame."""
@@ -37,18 +39,18 @@ def profile_in_memory(df: pd.DataFrame) -> Dict[str, Any]:
 
 def get_data_profile(file_path: str) -> Dict[str, Any]:
     """Checks file size and generates a profile for the dataset."""
-    print(f"\n---PROFILING DATA: {file_path}---")
+    logger.debug(f"Profiling data from: {file_path}")
     file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
     
     # Conditional logic for scalability
     if file_size_mb < 100:
-        print("File size is small (<100MB). Using in-memory profiling.")
+        logger.debug("File size is small (<100MB). Using in-memory profiling.")
         df = pd.read_csv(file_path)
     else:
         # For a prototype, we'll still use in-memory but show the logic path
-        print("File size is large (>=100MB). Using in-memory for prototype, but would use chunking in production.")
+        logger.debug("File size is large (>=100MB). Using in-memory for prototype.")
         df = pd.read_csv(file_path)
         
     profile = profile_in_memory(df)
-    print("Profiling complete.")
+    logger.debug("Profiling complete.")
     return profile

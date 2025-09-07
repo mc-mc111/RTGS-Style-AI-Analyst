@@ -1,42 +1,98 @@
+import os
 import typer
-from rich.console import Console
+import traceback
+from datetime import datetime
 from langgraph.graph import StateGraph, END
-from state import GraphState
-from agents.ingestion import ingestion_node
-from agents.planning import planning_node
-from agents.cleaning import cleaning_node
-from agents.insight import insight_node
-from agents.documentation import documentation_node # <-- Import the final node
 
-console = Console()
+# We will wrap the agent imports in a try block as well
+try:
+    from agents.logger import logger, log_error_and_exit
+    from state import GraphState
+    from agents.ingestion import ingestion_node
+    from agents.planning import planning_node
+    from agents.cleaning import cleaning_node
+    from agents.insight import insight_node
+    from agents.documentation import documentation_node
+except ImportError as e:
+    # This will catch errors like the one you saw if a module is missing or has an issue
+    print("\n[ERROR] A critical error occurred during application startup.")
+    print(f"Details: {e}")
+    print("Please ensure all dependencies are installed correctly.")
+    # We can't use the logger here because it might be the thing that failed to import
+    # So we write a manual error log
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
+    with open(f"logs/import_error_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log", "w") as f:
+        f.write(traceback.format_exc())
+    raise typer.Exit(code=1)
+
+
+# The logger is now created in the logger.py file
 app = typer.Typer()
 
 @app.command()
-def run(input_file: str = typer.Argument("TG-NPDCL_consumption_detail_agriculture_AUGUST-2025.csv", help="Path to the input CSV file.")):
-    """Runs the full data analysis pipeline with insights and documentation."""
-    console.print(f"[bold green]Starting AI pipeline for: {input_file}[/bold green]")
+def run(input_file: str = typer.Argument(..., help="Path to the input CSV file.")):
+    """Runs the full data analysis pipeline with a clean, logged interface."""
+    
+    try:
+        logger.info("[bold green]Starting RTGS AI Analyst Pipeline...[/bold green]")
+        
+        # --- Pre-flight Checks ---
+        logger.info(f"--> Verifying input file: '{input_file}'")
+        if not os.path.exists(input_file):
+            raise FileNotFoundError(f"Input file not found.")
+        if os.path.getsize(input_file) == 0:
+            raise ValueError(f"Input file is empty.")
+        logger.info("    File verified successfully.")
 
-    workflow = StateGraph(GraphState)
-    workflow.add_node("ingest", ingestion_node)
-    workflow.add_node("plan", planning_node)
-    workflow.add_node("clean", cleaning_node)
-    workflow.add_node("insight", insight_node)
-    workflow.add_node("document", documentation_node) # <-- Add the final node
+        # --- Define Graph ---
+        workflow = StateGraph(GraphState)
+        workflow.add_node("ingest", ingestion_node)
+        workflow.add_node("plan", planning_node)
+        workflow.add_node("clean", cleaning_node)
+        workflow.add_node("insight", insight_node)
+        workflow.add_node("document", documentation_node)
+        workflow.set_entry_point("ingest")
+        workflow.add_edge("ingest", "plan")
+        workflow.add_edge("plan", "clean")
+        workflow.add_edge("clean", "insight")
+        workflow.add_edge("insight", "document")
+        workflow.add_edge("document", END)
+        graph = workflow.compile()
 
-    workflow.set_entry_point("ingest")
-    workflow.add_edge("ingest", "plan")
-    workflow.add_edge("plan", "clean")
-    workflow.add_edge("clean", "insight")
-    workflow.add_edge("insight", "document") # <-- Rewire the graph
-    workflow.add_edge("document", END)
+        # --- Execute Pipeline ---
+        initial_state = {"raw_data_path": input_file}
+        logger.info("--> Executing data processing pipeline...")
+        final_state = graph.invoke(initial_state)
 
-    graph = workflow.compile()
+        logger.info("\n[bold green]Pipeline run complete! All artifacts generated.[/bold green]")
+        logger.info(f"    - Final Report: {final_state.get('documentation_path')}")
+        logger.info(f"    - Cleaned Data: {final_state.get('cleaned_data_path')}")
+        logger.info(f"    - Insight Plot: {final_state.get('insights', {}).get('plot_path')}")
 
-    initial_state = {"raw_data_path": input_file}
-    final_state = graph.invoke(initial_state)
-
-    console.print("\n[bold green]AI pipeline run complete! All artifacts generated.[/bold green]")
-    console.print(final_state)
+    except PermissionError as e:
+        logger.critical("PermissionError occurred:", exc_info=True)
+        logger.info(f"\n[bold red]FILE LOCK ERROR:[/bold red] The file '{e.filename}' is currently open or being used by another program (like Excel).")
+        logger.info("Please close the program that is using the file and try again.")
+        raise typer.Exit(code=1)
+    except (ValueError, FileNotFoundError, ConnectionError) as e:
+        # Catch our known, user-facing errors
+        log_error_and_exit(logger, e)
+    except Exception as e:
+        # Catch any other unexpected runtime errors
+        log_error_and_exit(logger, e)
 
 if __name__ == "__main__":
-    app()
+    # This is the master safety net. It will catch any error, including ImportErrors.
+    try:
+        app()
+    except Exception as e:
+        # This part runs if something catastrophic happened before the logger was even ready
+        print("\nAn unexpected critical error occurred.")
+        # Manually create a log file for the traceback
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+        log_filename = f"logs/critical_error_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        with open(log_filename, "w") as f:
+            f.write(traceback.format_exc())
+        print(f"Details have been saved to '{log_filename}'.")

@@ -4,6 +4,7 @@ import socket
 import google.generativeai as genai
 from dotenv import load_dotenv
 from typing import Dict, Any
+from agents.logger import logger
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -18,12 +19,11 @@ def check_internet_connection():
 
 def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     """Sends the data profile to the AI to get a reasoned cleaning plan."""
-    print("---GENERATING CLEANING PLAN WITH AI---")
+    logger.debug("Generating cleaning plan with AI...")
 
     if not check_internet_connection():
-        print("Error: No internet connection. Cannot contact AI planner.")
-        return {"steps": []}
-    print("Internet connection verified.")
+        raise ConnectionError("No internet connection. Cannot contact AI planner.")
+    logger.info("    Internet connection verified.")
     
     prompt = f"""
     You are an expert data scientist. Your task is to generate a JSON object with a 'steps' key
@@ -31,12 +31,18 @@ def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
 
     **CRITICAL Instructions:**
     1.  **Include a "reason" for every single step.** Explain why the action is necessary for analysis.
-    2.  **PRIORITIZE TEXT COLUMNS:** If you see columns with names like 'review' or 'text', assume they are important. Suggest the `clean_text` action for them.
-    3.  **Handle Duplicates and Unnecessary Columns:** Always suggest removing duplicates and any truly useless columns.
-    4.  **Clean Messy Numeric Data:** Suggest `convert_type` with `pre_processing` for object columns that contain numbers.
-    5.  **Engineer Features:** Suggest `create_feature` where it provides clear value.
+    2.  **Clean Categorical Columns:** If a column like 'decision' or 'sentiment' appears to be a category but has messy values, suggest the `clean_categorical` action to normalize it.
+    3.  **PRIORITIZE TEXT COLUMNS:** If you see columns with names like 'review' or 'text', assume they are important. Suggest the `clean_text` action for them.
+    4.  **Handle Duplicates and Unnecessary Columns:** Always suggest removing duplicates and any truly useless columns.
+    5.  **Clean Messy Numeric Data:** Suggest `convert_type` with `pre_processing` for object columns that contain numbers.
+    6.  **Engineer Features:** Suggest `create_feature` where it provides clear value.
 
     **Allowed Actions & Required JSON Structure:**
+
+    - **action: "clean_categorical"**
+      - **column**: The categorical column to clean (e.g., "decision").
+      - **details**: {{"valid_values": ["positive", "negative"]}}
+      - **reason**: Explain that this step ensures the column only contains valid categories for accurate grouping.
 
     - **action: "clean_text"**
       - **column**: The name of the text column (e.g., "review_text").
@@ -84,8 +90,8 @@ def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     try:
         response = model.generate_content(prompt)
         plan = json.loads(response.text)
-        print("Successfully generated reasoned cleaning plan from AI.")
+        logger.debug("Successfully generated reasoned cleaning plan from AI.")
         return plan
     except Exception as e:
-        print(f"An error occurred during AI plan generation: {e}")
+        logger.error(f"An error occurred during AI plan generation: {e}")
         return {"steps": []}

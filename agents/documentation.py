@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from typing import Dict, Any
-
+from agents.logger import logger
 from state import GraphState
 
 def format_plan_for_report(plan: Dict[str, Any]) -> str:
@@ -29,7 +29,7 @@ def format_plan_for_report(plan: Dict[str, Any]) -> str:
 
 def documentation_node(state: GraphState) -> Dict[str, Any]:
     """Gathers all information and creates a final Markdown report."""
-    print("\n---EXECUTING DOCUMENTATION NODE---")
+    logger.info("    - Executing: Documentation Node")
     
     raw_data_path = state.get('raw_data_path', 'N/A')
     cleaning_plan = state.get('cleaning_plan', {})
@@ -72,9 +72,9 @@ A high-level log of the pipeline's execution stages:
     try:
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report)
-        print(f"Successfully generated and saved run report to {report_path}")
+        logger.debug(f"Successfully generated and saved run report to {report_path}")
     except Exception as e:
-        print(f"Error saving report: {e}")
+        logger.error(f"Error saving report: {e}")
 
     # Update the state with the path to the final report
     return {"documentation_path": report_path}

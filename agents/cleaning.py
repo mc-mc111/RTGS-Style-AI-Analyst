@@ -3,13 +3,14 @@ import re
 import string
 from typing import Dict, Any
 from state import GraphState
+from agents.logger import logger
 
 def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
     """Dynamically executes the steps from the AI-generated cleaning plan."""
     df_cleaned = df.copy()
     
     if "steps" not in plan or not isinstance(plan["steps"], list):
-        print("Warning: Cleaning plan is malformed. Skipping cleaning.")
+        logger.warning("Cleaning plan is malformed. Skipping cleaning.")
         return df_cleaned
         
     for step in plan["steps"]:
@@ -18,8 +19,7 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
         column = step.get("column") or details.get("column")
         reason = step.get("reason", "No reason provided.")
 
-        log_message = f"Action: {action}, Column: '{column or 'all'}', Reason: {reason}"
-        print(log_message)
+        logger.debug(f"Action: {action}, Column: '{column or 'all'}', Reason: {reason}")
         
         try:
             if action == "remove_duplicates":
@@ -42,6 +42,14 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
                     temp_col = temp_col.str.encode('ascii', 'ignore').str.decode('ascii')
                 
                 df_cleaned[column] = temp_col
+
+            # --- START: NEW CATEGORICAL CLEANING ACTION ---
+            elif action == "clean_categorical" and column:
+                valid_values = details.get("valid_values", [])
+                if valid_values:
+                    # Keep only the rows where the column's value is in our valid list
+                    df_cleaned = df_cleaned[df_cleaned[column].isin(valid_values)]
+            # --- END: NEW CATEGORICAL CLEANING ACTION ---
 
             elif action == "convert_type" and column:
                 new_type = details.get("new_type")
@@ -71,7 +79,6 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
                 else:
                     fill_value = details.get("fill_value", 0)
                 
-                # --- FIX IS HERE: Switched to the recommended, non-inplace method ---
                 df_cleaned[column] = df_cleaned[column].fillna(fill_value)
             
             elif action == "create_feature":
@@ -81,13 +88,13 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
                     df_cleaned[new_col] = df_cleaned.eval(expression)
 
         except Exception as e:
-            print(f"Could not execute step {step}. Error: {e}")
+            logger.error(f"Could not execute step {step}. Error: {e}")
             
     return df_cleaned
 
 def cleaning_node(state: GraphState) -> Dict[str, Any]:
     """Loads data and executes the AI-generated cleaning plan."""
-    print("\n---EXECUTING DYNAMIC CLEANING NODE---")
+    logger.info("    - Executing: Dynamic Cleaning Node")
     standardized_data_path = state['standardized_data_path']
     plan = state['cleaning_plan']
 
@@ -97,13 +104,13 @@ def cleaning_node(state: GraphState) -> Dict[str, Any]:
     except UnicodeDecodeError:
         df = pd.read_csv(standardized_data_path, encoding='latin-1')
     
-    print(f"Loaded {standardized_data_path}.")
+    logger.debug(f"Loaded {standardized_data_path}.")
     
     cleaned_df = execute_plan(df, plan)
 
     cleaned_data_path = "outputs/2_cleaned_data.csv"
     cleaned_df.to_csv(cleaned_data_path, index=False)
-    print(f"Saved dynamically cleaned data to {cleaned_data_path}")
+    logger.debug(f"Saved dynamically cleaned data to {cleaned_data_path}")
 
     return {
         "cleaned_data_path": cleaned_data_path,
