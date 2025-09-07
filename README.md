@@ -1,6 +1,6 @@
 # RTGS-Style AI Analyst
 
-**\[Link to Demo\]**  
+**[Link to Demo](https://youtu.be/lbOx9zWQhgg)**  
 **\[For more details refer to RTGS-AI-ANALYST-DOCUMENTATION.pdf\]**
 
 A terminal-based agentic system that transforms raw, messy datasets into standardized, analysis-ready insights. This prototype uses a state-driven graph and a Large Language Model (LLM) to create and execute dynamic data cleaning, feature engineering, and automated exploratory data analysis plans.
