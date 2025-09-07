@@ -26,10 +26,12 @@ def ingestion_node(state: GraphState) -> Dict[str, Any]:
         print("Attempting robust read for potentially malformed CSV...")
         df = pd.read_csv(
             raw_data_path,
-            encoding='latin-1',  # Use latin-1 which is common for this type of file
-            header=None,         # The file has no header row
-            usecols=[0, 1],      # Read only the first two columns
-            names=['review_text', 'decision'] # Name them explicitly
+            encoding='latin-1',      # Use latin-1 which is common for this type of file
+            header=None,             # The file has no header row
+            usecols=[0, 1],          # Read only the first two columns
+            names=['review_text', 'decision'], # Name them explicitly
+            on_bad_lines='skip',     # **KEY ADDITION**: Skip corrupted or unreadable lines
+            engine='python'          # Required for 'on_bad_lines' to work
         )
         print(f"Successfully loaded {raw_data_path} with robust parser.")
     except Exception as e:

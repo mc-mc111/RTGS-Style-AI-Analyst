@@ -29,14 +29,12 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
                 df_cleaned.drop(columns=[column], inplace=True)
             
             elif action == "clean_text" and column:
-                # Ensure column is string type and handle missing values
                 temp_col = df_cleaned[column].astype(str).fillna('')
                 operations = details.get("operations", [])
                 
                 if "lowercase" in operations:
                     temp_col = temp_col.str.lower()
                 if "remove_punctuation" in operations:
-                    # Remove all standard punctuation
                     temp_col = temp_col.str.replace(f'[{re.escape(string.punctuation)}]', '', regex=True)
                 if "remove_digits" in operations:
                     temp_col = temp_col.str.replace(r'\d+', '', regex=True)
@@ -57,7 +55,7 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
                     temp_col = temp_col.str.replace(r'\[.*?\]', '', regex=True)
                 df_cleaned[column] = pd.to_numeric(temp_col, errors='coerce')
                 if df_cleaned[column].isnull().any():
-                    df_cleaned[column].fillna(0, inplace=True)
+                    df_cleaned[column] = df_cleaned[column].fillna(0) # Switched to non-inplace
                 if new_type in ['int64', 'float64']:
                     df_cleaned = df_cleaned.astype({column: new_type})
             
@@ -72,7 +70,9 @@ def execute_plan(df: pd.DataFrame, plan: Dict[str, Any]) -> pd.DataFrame:
                     fill_value = df_cleaned[column].mode()[0]
                 else:
                     fill_value = details.get("fill_value", 0)
-                df_cleaned[column].fillna(fill_value, inplace=True)
+                
+                # --- FIX IS HERE: Switched to the recommended, non-inplace method ---
+                df_cleaned[column] = df_cleaned[column].fillna(fill_value)
             
             elif action == "create_feature":
                 new_col = details.get("new_column_name")
@@ -91,7 +91,12 @@ def cleaning_node(state: GraphState) -> Dict[str, Any]:
     standardized_data_path = state['standardized_data_path']
     plan = state['cleaning_plan']
 
-    df = pd.read_csv(standardized_data_path)
+    # Using latin-1 as a robust fallback for tricky files
+    try:
+        df = pd.read_csv(standardized_data_path, encoding='utf-8')
+    except UnicodeDecodeError:
+        df = pd.read_csv(standardized_data_path, encoding='latin-1')
+    
     print(f"Loaded {standardized_data_path}.")
     
     cleaned_df = execute_plan(df, plan)

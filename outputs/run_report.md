@@ -1,7 +1,7 @@
 
 # RTGS AI Analyst Run Report
 
-**Run Timestamp:** 2025-09-06 22:39:05
+**Run Timestamp:** 2025-09-07 09:13:41
 **Location:** Vijayawada, Andhra Pradesh, India
 
 ---
@@ -24,11 +24,11 @@ The AI analyzed the data and generated the following plan, which was then execut
 
 **Step 3: Fill Missing** on column `review_text`
 
-> *Reason: Imputing missing 'review_text' values with the most frequent value minimizes data loss and preserves the integrity of the dataset for analysis.*
+> *Reason: Imputing missing 'review_text' values with the most frequent value minimizes data loss and preserves the maximum amount of information for analysis.*
 
 **Step 4: Fill Missing** on column `decision`
 
-> *Reason: Filling missing values in the 'decision' column with the most frequent category ('positive') helps maintain data completeness and prevents bias in downstream analysis.*
+> *Reason: Filling missing values in the 'decision' column with the most frequent category ('positive') is a simple and effective strategy to handle missing data, minimizing information loss and bias.*
 
 ---
 
