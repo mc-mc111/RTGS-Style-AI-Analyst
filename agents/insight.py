@@ -66,7 +66,7 @@ def generate_findings_in_batch(interpretation_requests: List[Dict[str, Any]]) ->
     prompt += "Provide your recommendations as a numbered list of sentences, with each recommendation on a new line."
     # --- END: PROMPT UPGRADE ---
 
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+    model = genai.GenerativeModel("gemini-2.0-flash")
     try:
         response = model.generate_content(prompt)
         findings = [line.strip().split('. ', 1)[1] for line in response.text.strip().split('\n') if '. ' in line]

@@ -23,7 +23,7 @@ def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
 
     if not check_internet_connection():
         raise ConnectionError("No internet connection. Cannot contact AI planner.")
-    logger.info("    Internet connection verified.")
+    logger.info("Internet connection verified.")
     
     prompt = f"""
     You are an expert data scientist preparing a dataset for machine learning. Your task is to generate a JSON object with a 'steps' key
