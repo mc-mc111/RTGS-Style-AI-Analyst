@@ -1,1 +1,0 @@
-please refer to RTGS-AI-ANALYST-DOCUMENTATION.pdf
