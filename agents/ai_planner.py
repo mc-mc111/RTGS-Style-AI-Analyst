@@ -109,7 +109,7 @@ def generate_cleaning_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     }
     
     # Corrected model name to the one that works
-    model = genai.GenerativeModel("gemini-2.0-flash", generation_config=generation_config)
+    model = genai.GenerativeModel("gemini-2.5-flash", generation_config=generation_config)
     
     try:
         response = model.generate_content(prompt)

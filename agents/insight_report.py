@@ -32,7 +32,7 @@ def generate_dataset_summary(profile: Dict[str, Any]) -> str:
     Generate the summary paragraph now.
     """
     
-    model = genai.GenerativeModel("gemini-2.0-flash") # Corrected model name
+    model = genai.GenerativeModel("gemini-2.5-flash") # Corrected model name
     
     try:
         response = model.generate_content(prompt)

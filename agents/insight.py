@@ -66,7 +66,7 @@ def generate_findings_in_batch(interpretation_requests: List[Dict[str, Any]]) ->
     prompt += "Provide your recommendations as a numbered list of sentences, with each recommendation on a new line."
     # --- END: PROMPT UPGRADE ---
 
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     try:
         response = model.generate_content(prompt)
         findings = [line.strip().split('. ', 1)[1] for line in response.text.strip().split('\n') if '. ' in line]
@@ -113,7 +113,7 @@ def generate_insight_plan(profile: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     generation_config = {"temperature": 0.0, "response_mime_type": "application/json"}
-    model = genai.GenerativeModel("gemini-1.5-flash-latest", generation_config=generation_config)
+    model = genai.GenerativeModel("gemini-2.5-flash", generation_config=generation_config)
     
     try:
         response = model.generate_content(prompt)
